@@ -9,7 +9,10 @@ on:
 
 jobs:
   build:
+    name: grep
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -20,8 +23,8 @@ jobs:
           #repos: >
           #  archlinuxcn=https://geo-mirror.chaotic.cx/$repo/$arch
           #before: "sudo pacman -S --noconfirm archlinux-keyring chaotic-keyring chaotic-mirrorlist"
-          packages: >
-            musl
+          #packages: >
+          #  musl
           #   base-devel
           #   coreutils
           #   curl

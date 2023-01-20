@@ -3,8 +3,10 @@
 export MAKEFLAGS="-j$(nproc)"
 
 # WITH_UPX=1
+# NO_SYS_MUSL=1
 
 grep_version="latest"
+musl_version="latest"
 
 platform="$(uname -s)"
 platform_arch="$(uname -m)"
@@ -13,12 +15,16 @@ if [ -x "$(which apt 2>/dev/null)" ]
     then
         apt update && apt install -y \
             build-essential clang pkg-config git autoconf libtool \
-            gettext autopoint po4a upx libpcre2-dev
+            gettext autopoint po4a upx
 fi
 
 [ "$grep_version" == "latest" ] && \
   grep_version="$(curl -s https://ftp.gnu.org/gnu/grep/|tac|\
                        grep -om1 'grep-.*\.tar\.xz'|cut -d'>' -f2|sed 's|grep-||g;s|.tar.xz||g')"
+
+[ "$musl_version" == "latest" ] && \
+  musl_version="$(curl -s https://www.musl-libc.org/releases/|tac|grep -v 'latest'|\
+                  grep -om1 'musl-.*\.tar\.gz'|cut -d'>' -f2|sed 's|musl-||g;s|.tar.gz||g')"
 
 if [ -d build ]
     then
@@ -46,6 +52,29 @@ tar -xf grep-${grep_version}.tar.gz
 
 if [ "$platform" == "Linux" ]
     then
+        echo "= setting CC to musl-gcc"
+        if [[ ! -x "$(which musl-gcc 2>/dev/null)" || "$NO_SYS_MUSL" == 1 ]]
+            then
+                echo "= downloading musl v${musl_version}"
+                curl -LO https://www.musl-libc.org/releases/musl-${musl_version}.tar.gz
+
+                echo "= extracting musl"
+                tar -xf musl-${musl_version}.tar.gz
+
+                echo "= building musl"
+                working_dir="$(pwd)"
+
+                install_dir="${working_dir}/musl-install"
+
+                pushd musl-${musl_version}
+                env CFLAGS="$CFLAGS -Os -ffunction-sections -fdata-sections" \
+                    LDFLAGS='-Wl,--gc-sections' ./configure --prefix="${install_dir}"
+                make install
+                popd # musl-${musl-version}
+                export CC="${working_dir}/musl-install/bin/musl-gcc"
+            else
+                export CC="$(which musl-gcc 2>/dev/null)"
+        fi
         export CFLAGS="-static"
         export LDFLAGS='--static'
     else
@@ -56,7 +85,7 @@ fi
 echo "= building grep"
 pushd grep-${grep_version}
 env CFLAGS="$CFLAGS -g -O2 -Os -ffunction-sections -fdata-sections" \
-    LDFLAGS="$LDFLAGS -Wl,--gc-sections" ./configure --enable-perl-regexp
+    LDFLAGS="$LDFLAGS -Wl,--gc-sections" ./configure
 make DESTDIR="$(pwd)/install" install
 popd # grep-${grep_version}
 
@@ -84,7 +113,7 @@ fi
 
 echo "= create release tar.xz"
 [ -n "$(ls -A release/ 2>/dev/null)" ] && \
-tar --xz -acf grep-static-v${grep_version}-${platform_arch}.tar.xz release
+tar --xz -acf grep-static-v${grep_version}-${platform_arch}-musl.tar.xz release
 # cp grep-static-*.tar.xz /root 2>/dev/null
 
 if [ "$NO_CLEANUP" != 1 ]
