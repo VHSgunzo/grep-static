@@ -9,8 +9,8 @@ on:
 
 jobs:
   build:
-    name: grep
-    runs-on: ubuntu-latest
+    name: grep-static
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
@@ -18,18 +18,9 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build
-        uses: countstarlight/arch-makepkg-action@master
-        with:
-          #repos: >
-          #  archlinuxcn=https://geo-mirror.chaotic.cx/$repo/$arch
-          #before: "sudo pacman -S --noconfirm archlinux-keyring chaotic-keyring chaotic-mirrorlist"
-          #packages: >
-          #  musl
-          #   base-devel
-          #   coreutils
-          #   curl
-          #   upx
-          scripts: "./build.sh"
+        run: |
+            sudo bash -c "${{ github.workspace }}/build.sh"
+
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
