@@ -68,10 +68,7 @@ echo "= extracting grep binary"
 mv build/grep-${grep_version}/install/usr/local/bin/* release 2>/dev/null
 
 echo "= striptease"
-for file in release/*
-  do
-      strip -s -R .comment -R .gnu.version --strip-unneeded "$file" 2>/dev/null
-done
+strip -s -R .comment -R .gnu.version --strip-unneeded release/grep 2>/dev/null
 
 if [[ "$WITH_UPX" == 1 && -x "$(which upx 2>/dev/null)" ]]
     then
